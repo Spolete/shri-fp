@@ -1,51 +1,88 @@
-/**
- * @file Домашка по FP ч. 2
- *
- * Подсказки:
- * Метод get у инстанса Api – каррированый
- * GET / https://animals.tech/{id}
- *
- * GET / https://api.tech/numbers/base
- * params:
- * – number [Int] – число
- * – from [Int] – из какой системы счисления
- * – to [Int] – в какую систему счисления
- *
- * Иногда промисы от API будут приходить в состояние rejected, (прямо как и API в реальной жизни)
- * Ответ будет приходить в поле {result}
- */
- import Api from '../tools/api';
+import Api from '../tools/api';
+import {
+  tap,
+  test,
+  concat,
+  otherwise,
+  __,
+  allPass,
+  assoc,
+  compose,
+  partial,
+  gt,
+  andThen,
+  ifElse,
+  length,
+  mathMod,
+  lt,
+  prop
+} from "ramda";
 
- const api = new Api();
+const apiInstance = new Api();
+const API_NUMBERS_URL = 'https://api.tech/numbers/base';
+const API_ANIMALS_URL = 'https://animals.tech/';
 
- /**
-  * Я – пример, удали меня
-  */
- const wait = time => new Promise(resolve => {
-     setTimeout(resolve, time);
- })
+const calculateSquare = num => num ** 2;
+const isGreaterThanTwo = gt(__, 2);
+const isLessThanTen = lt(__, 10);
 
- const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
-     /**
-      * Я – пример, удали меня
-      */
-     writeLog(value);
+const thenCalculateSquare = andThen(calculateSquare);
 
-     api.get('https://api.tech/numbers/base', {from: 2, to: 10, number: '01011010101'}).then(({result}) => {
-         writeLog(result);
-     });
+const isLengthGreaterThanTwo = compose(isGreaterThanTwo, length);
+const isLengthLessThanTen = compose(isLessThanTen, length);
+const containsOnlyNumbers = test(/^[0-9]+\.?[0-9]+$/);
+const roundStringToInteger = compose(Math.round, Number);
+const calculateModuloThreeAndConvertToString = compose(String, mathMod(__, 3));
 
-     wait(2500).then(() => {
-         writeLog('SecondLog')
+const thenCalculateModuloThreeAndConvertToString = andThen(calculateModuloThreeAndConvertToString);
+const thenCalculateLength = andThen(length);
 
-         return wait(1500);
-     }).then(() => {
-         writeLog('ThirdLog');
+const isValid = allPass([isLengthGreaterThanTwo, isLengthLessThanTen, containsOnlyNumbers]);
 
-         return wait(400);
-     }).then(() => {
-         handleSuccess('Done');
-     });
- }
+const extractResultFromApiResponse = compose(String, prop('result'));
+
+const preparePayloadForNumberToBinaryConversion = assoc('number', __, { from: 10, to: 2 });
+
+const fetchNumberBinaryBaseFromApi = compose(
+  apiInstance.get(API_NUMBERS_URL),
+  preparePayloadForNumberToBinaryConversion
+);
+
+const thenExtractResultFromApiResponse = andThen(extractResultFromApiResponse);
+const thenConcatWithAnimalsApiUrl = andThen(concat(API_ANIMALS_URL));
+const thenFetchDataFromApiWithEmptyParams = andThen(apiInstance.get(__, {}));
+
+const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
+  const logToConsole = tap(writeLog);
+  const thenLogToConsole = andThen(logToConsole);
+  const thenExecuteSuccessCallback = andThen(handleSuccess);
+  const otherwiseExecuteErrorCallback = otherwise(handleError);
+
+  const executeValidationErrorCallback = partial(handleError, ['ValidationError']);
+
+  const processSequence = compose(
+    otherwiseExecuteErrorCallback,
+    thenExecuteSuccessCallback,
+    thenExtractResultFromApiResponse,
+    thenFetchDataFromApiWithEmptyParams,
+    thenConcatWithAnimalsApiUrl,
+    thenLogToConsole,
+    thenCalculateModuloThreeAndConvertToString,
+    thenLogToConsole,
+    thenCalculateSquare,
+    thenLogToConsole,
+    thenCalculateLength,
+    thenLogToConsole,
+    thenExtractResultFromApiResponse,
+    fetchNumberBinaryBaseFromApi,
+    logToConsole,
+    roundStringToInteger,
+  );
+
+  const runSequenceConditionally = ifElse(isValid, processSequence, executeValidationErrorCallback);
+  const logAndExecuteSequence = compose(runSequenceConditionally, logToConsole);
+
+  logAndExecuteSequence(value);
+};
 
 export default processSequence;

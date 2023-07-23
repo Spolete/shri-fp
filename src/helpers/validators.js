@@ -1,50 +1,87 @@
-/**
- * @file Домашка по FP ч. 1
- *
- * Основная задача — написать самому, или найти в FP библиотеках функции anyPass/allPass
- * Эти функции/их аналоги есть и в ramda и в lodash
- *
- * allPass — принимает массив функций-предикатов, и возвращает функцию-предикат, которая
- * вернет true для заданного списка аргументов, если каждый из предоставленных предикатов
- * удовлетворяет этим аргументам (возвращает true)
- *
- * anyPass — то же самое, только удовлетворять значению может единственная функция-предикат из массива.
- *
- * Если какие либо функции написаны руками (без использования библиотек) это не является ошибкой
- */
+import {
+    compose,
+    allPass,
+    complement,
+    any,
+    propEq,
+    equals,
+    countBy,
+    __,
+    identity,
+    dissoc,
+    values,
+    gte,
+    prop
+} from 'ramda';
 
-// 1. Красная звезда, зеленый квадрат, все остальные белые.
-export const validateFieldN1 = ({star, square, triangle, circle}) => {
-    if (triangle !== 'white' || circle !== 'white') {
-        return false;
-    }
+const RED = 'red';
+const WHITE = 'white';
+const GREEN = 'green';
+const ORANGE = 'orange';
+const BLUE = 'blue';
 
-    return star === 'red' && square === 'green';
-};
+const STAR = 'star';
+const TRIANGLE = 'triangle';
+const SQUARE = 'square';
+const CIRCLE = 'circle';
 
-// 2. Как минимум две фигуры зеленые.
-export const validateFieldN2 = () => false;
+const isTwoOrMore = gte(__, 2);
+const isThreeOrMore = gte(__, 3);
+const anyThreeOrMore = any(isThreeOrMore);
+const anyValueThreeOrMore = compose(anyThreeOrMore, values);
 
-// 3. Количество красных фигур равно кол-ву синих.
-export const validateFieldN3 = () => false;
+const extractStar = prop(STAR);
+const extractTriangle = prop(TRIANGLE);
+const extractSquare = prop(SQUARE);
+const extractCircle = prop(CIRCLE);
 
-// 4. Синий круг, красная звезда, оранжевый квадрат треугольник любого цвета
-export const validateFieldN4 = () => false;
+const isRed = equals(RED);
+const isWhite = equals(WHITE);
+const isGreen = equals(GREEN);
+const isOrange = equals(ORANGE);
+const isBlue = equals(BLUE);
+const removeWhite = dissoc(WHITE);
+const extractGreen = prop(GREEN);
+const twoGreenInstances = propEq(GREEN, 2);
+const oneRedInstance = propEq(RED, 1);
 
-// 5. Три фигуры одного любого цвета кроме белого (четыре фигуры одного цвета – это тоже true).
-export const validateFieldN5 = () => false;
+const countColors = compose(countBy(identity), values);
+const countColorsWithoutWhite = compose(removeWhite, countColors);
 
-// 6. Ровно две зеленые фигуры (одна из зелёных – это треугольник), плюс одна красная. Четвёртая оставшаяся любого доступного цвета, но не нарушающая первые два условия
-export const validateFieldN6 = () => false;
+const isStarRed = compose(isRed, extractStar);
+const isStarWhite = compose(isWhite, extractStar);
+const isStarNotRed = complement(isStarRed);
+const isStarNotWhite = complement(isStarWhite);
 
-// 7. Все фигуры оранжевые.
-export const validateFieldN7 = () => false;
+const isCircleWhite = compose(isWhite, extractCircle);
+const isCircleBlue = compose(isBlue, extractCircle);
 
-// 8. Не красная и не белая звезда, остальные – любого цвета.
-export const validateFieldN8 = () => false;
+const isTriangleWhite = compose(isWhite, extractTriangle);
+const isTriangleGreen = compose(isGreen, extractTriangle);
+const isTriangleNotWhite = complement(isTriangleWhite);
 
-// 9. Все фигуры зеленые.
-export const validateFieldN9 = () => false;
+const isSquareGreen = compose(isGreen, extractSquare);
+const isSquareOrange = compose(isOrange, extractSquare);
+const isSquareWhite = compose(isWhite, extractSquare);
+const isSquareNotWhite = complement(isSquareWhite);
 
-// 10. Треугольник и квадрат одного цвета (не белого), остальные – любого цвета
-export const validateFieldN10 = () => false;
+const redEqualsBlue = ({ blue, red }) => blue === red;
+const squareEqualsTriangle = ({ square, triangle }) => square === triangle;
+
+const hasTwoGreenColors = compose(twoGreenInstances, countColors);
+const hasOneRedColor = compose(oneRedInstance, countColors);
+
+const allColorsAre = color => compose(propEq(color, 4), countColors);
+
+const countGreenColors = compose(extractGreen, countColors);
+
+export const validateFieldN1 = allPass([isStarRed, isSquareGreen, isTriangleWhite, isCircleWhite]);
+export const validateFieldN2 = compose(isTwoOrMore, countGreenColors);
+export const validateFieldN3 = compose(redEqualsBlue, countColors);
+export const validateFieldN4 = allPass([isStarRed, isCircleBlue, isSquareOrange]);
+export const validateFieldN5 = compose(anyValueThreeOrMore, countColorsWithoutWhite);
+export const validateFieldN6 = allPass([isTriangleGreen, hasTwoGreenColors, hasOneRedColor]);
+export const validateFieldN7 = allColorsAre(ORANGE);
+export const validateFieldN8 = allPass([isStarNotRed, isStarNotWhite]);
+export const validateFieldN9 = allColorsAre(GREEN);
+export const validateFieldN10 = allPass([isSquareNotWhite, isTriangleNotWhite, squareEqualsTriangle]);
